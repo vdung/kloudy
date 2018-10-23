@@ -1,0 +1,3 @@
+include ':app'
+include ':kodav'
+project(':kodav').projectDir = new File('libs/kotlin-webdav/kodav')

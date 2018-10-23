@@ -1,0 +1,3 @@
+[submodule "libs/kotlin-webdav"]
+	path = libs/kotlin-webdav
+	url = https://github.com/vdung/kodav.git

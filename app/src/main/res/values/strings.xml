@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Kloudy</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="server">Server</string>
+    <string name="login">login</string>
+</resources>

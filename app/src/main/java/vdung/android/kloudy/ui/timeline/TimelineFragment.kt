@@ -1,53 +1,63 @@
 package vdung.android.kloudy.ui.timeline
 
-import android.graphics.drawable.Drawable
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
-import android.transition.TransitionInflater
 import android.util.SparseArray
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
-import androidx.core.app.SharedElementCallback
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.util.Pair
 import androidx.core.view.ViewCompat
 import androidx.databinding.ViewDataBinding
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.get
+import androidx.navigation.ActivityNavigator
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView.NO_ID
-import com.bumptech.glide.load.DataSource
-import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.request.RequestListener
-import com.bumptech.glide.request.target.Target
+import androidx.recyclerview.widget.RecyclerView
 import dagger.android.support.DaggerFragment
 import vdung.android.kloudy.R
-import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.data.nextcloud.NextcloudConfig
-import vdung.android.kloudy.databinding.MainGridCellBinding
 import vdung.android.kloudy.databinding.TimelineFragmentBinding
+import vdung.android.kloudy.databinding.TimelineGridCellBinding
 import vdung.android.kloudy.di.GlideApp
-import vdung.android.kloudy.ui.pages.PagerFragment
-import vdung.android.kloudy.ui.widget.DataBindingPagedListAdapter
-import vdung.android.kloudy.ui.widget.DataBindingViewHolder
-import vdung.android.kloudy.ui.widget.HeaderAdapter
+import vdung.android.kloudy.ui.main.OnActivityReenterListener
+import vdung.android.kloudy.ui.pages.PagerActivityDirections
+import vdung.android.kloudy.ui.common.*
 import javax.inject.Inject
 
-class TimelineFragment : DaggerFragment() {
-    companion object {
-        fun newInstance() = TimelineFragment()
-    }
+class TimelineFragment : DaggerFragment(), OnActivityReenterListener {
 
-    internal lateinit var timelineViewModel: TimelineViewModel
+    private lateinit var viewModel: TimelineViewModel
     private lateinit var binding: TimelineFragmentBinding
-    private lateinit var headerAdapter: HeaderAdapter<DataBindingViewHolder<ViewDataBinding>>
 
     @Inject
     internal lateinit var viewModelFactory: ViewModelProvider.Factory
     @Inject
     internal lateinit var nextcloudConfig: NextcloudConfig
+
+    private var hasPendingTransition = false
+
+    override fun onAttach(context: Context?) {
+        super.onAttach(context)
+        (requireActivity() as? OnActivityReenterListener.Host)?.addListener(this)
+    }
+
+    override fun onDetach() {
+        (requireActivity() as? OnActivityReenterListener.Host)?.removeListener(this)
+        super.onDetach()
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        viewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get()
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View {
@@ -55,140 +65,122 @@ class TimelineFragment : DaggerFragment() {
             it.setLifecycleOwner(this)
         }
 
-        postponeEnterTransition()
-
         return binding.root
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        timelineViewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get(TimelineViewModel::class.java)
 
-        setExitSharedElementCallback(object : SharedElementCallback() {
-            override fun onMapSharedElements(names: MutableList<String>, sharedElements: MutableMap<String, View>) {
-                binding.recyclerView.findViewHolderForAdapterPosition(headerAdapter.getActualPosition(timelineViewModel.currentPage))
-                        ?.let {
-                            it as? DataBindingViewHolder<*>
-                        }
-                        ?.let {
-                            it.binding as? MainGridCellBinding
-                        }
-                        ?.run {
-                            println(timelineViewModel.currentPage)
-                            sharedElements[names[0]] = imageView
-                        }
-            }
-        })
-
-        val spanSize = 3
-        val timelineAdapter = TimelineAdapter(this)
-        headerAdapter = HeaderAdapter(timelineAdapter).apply {
+        val spanSize = resources.getInteger(R.integer.span_size)
+        val timelineAdapter = TimelineAdapter()
+        val lifecycleOwner = viewLifecycleOwner
+        val headerAdapter = HeaderAdapter(timelineAdapter).apply {
             setHasStableIds(true)
         }
+        val gridLayoutManager = GridLayoutManager(activity, spanSize).apply {
+            spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                override fun getSpanSize(position: Int): Int {
+                    val headers = this@TimelineFragment.viewModel.loadFilesResult.value?.second
+                            ?: return 1
+
+                    return if (headers.indexOfKey(position) >= 0) spanSize
+                    else 1
+                }
+            }
+        }
+
         binding.apply {
-            viewModel = timelineViewModel
+            setLifecycleOwner(viewLifecycleOwner)
+            viewModel = this@TimelineFragment.viewModel.apply {
+                loadFilesResult.observe(lifecycleOwner, Observer { result ->
+                    val headers = result.second
+                    val headerInfos = SparseArray<HeaderAdapter.HeaderInfo<DataBindingViewHolder<ViewDataBinding>>>(headers.size())
+                    for (i in 0 until headers.size()) {
+                        headerInfos.put(headers.keyAt(i), Header(headers.valueAt(i)))
+                    }
+
+                    timelineAdapter.submitList(result.first.value) {
+                        headerAdapter.setHeaders(headerInfos)
+                    }
+                })
+
+                entryClickEvent.observe(lifecycleOwner, Observer {
+                    showDetail(headerAdapter, it)
+                })
+
+                isRefreshing.observe(lifecycleOwner, Observer {
+                    swipeRefreshLayout.isRefreshing = it
+                })
+            }
 
             recyclerView.apply {
                 adapter = headerAdapter
-                layoutManager = GridLayoutManager(activity, spanSize).apply {
-                    spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                        override fun getSpanSize(position: Int): Int {
-                            val headers = timelineViewModel.loadFilesResult.value?.second
-                                    ?: return 1
+                layoutManager = gridLayoutManager
+            }
 
-                            return if (headers.indexOfKey(position) >= 0) spanSize
-                            else 1
+            requireActivity().setExitSharedElementCallback(Transitions.to(recyclerView, { headerAdapter.getActualPosition(this@TimelineFragment.viewModel.currentPage) }) { viewHolder, names ->
+                viewHolder.let { it as? DataBindingViewHolder<*> }
+                        ?.let { it.binding as? TimelineGridCellBinding }
+                        ?.run {
+                            mapOf(names[0] to imageView)
                         }
-                    }
-                }
-                addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-                    override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
-                        removeOnLayoutChangeListener(this)
+                        ?: emptyMap()
+            })
+        }
 
-                        val layoutManager = layoutManager ?: return
+        if (hasPendingTransition) {
+            executePendingTransition()
+        }
+    }
 
-                        val actualPosition = headerAdapter.getActualPosition(timelineViewModel.currentPage)
-                        val viewAtPosition = layoutManager.findViewByPosition(actualPosition)
-                        if (viewAtPosition == null || layoutManager.isViewPartiallyVisible(viewAtPosition, false, true)) {
-                            recyclerView.post {
-                                layoutManager.scrollToPosition(actualPosition)
-                            }
-                        }
-                    }
-                })
+    override fun onActivityReenter(resultCode: Int, data: Intent?) {
+        data?.apply {
+            requireActivity().supportPostponeEnterTransition()
+            viewModel.currentPage = getIntExtra("CURRENT_PAGE", viewModel.currentPage)
+
+            if (::binding.isInitialized) {
+                executePendingTransition()
+            } else {
+                hasPendingTransition = true
             }
         }
+    }
 
-        val lifecycleOwner = viewLifecycleOwner
-        timelineViewModel.apply {
-            loadFilesResult.observe(lifecycleOwner, Observer { result ->
-                when (result) {
-                    is Result.Error<*> -> {
-                        Toast.makeText(activity, result.error.message, Toast.LENGTH_SHORT).show()
-                    }
-                    else -> {
-                        val headers = result.second
-                        val headerInfos = SparseArray<HeaderAdapter.HeaderInfo<DataBindingViewHolder<ViewDataBinding>>>(headers.size())
-                        for (i in 0 until headers.size()) {
-                            headerInfos.put(headers.keyAt(i), Header(headers.valueAt(i)))
-                        }
+    private fun executePendingTransition() {
+        val headerAdapter = binding.recyclerView.adapter as? HeaderAdapter ?: return
 
-                        timelineAdapter.submitList(result.first.value)
-                        headerAdapter.setHeaders(headerInfos)
-                    }
-                }
-            })
+        val position = headerAdapter.getActualPosition(viewModel.currentPage)
 
-            entryClickEvent.observe(lifecycleOwner, Observer {
-                showDetail(it)
-            })
+        binding.recyclerView.run {
+            executePendingTransaction(requireActivity(), position)
+            hasPendingTransition = false
         }
     }
 
-    private fun showDetail(fileId: Int) {
-        binding.recyclerView.findViewHolderForItemId(fileId.toLong())
-                ?.let { it as? DataBindingViewHolder<*> }
-                ?.also { timelineViewModel.currentPage = headerAdapter.getAdapterPosition(it.adapterPosition) }
-                ?.let { it.binding as? MainGridCellBinding }
-                ?.run {
-                    fragmentManager?.let {
-                        val detailFragment = PagerFragment.newInstance().apply {
-                            sharedElementEnterTransition = TransitionInflater.from(this@TimelineFragment.requireContext()).inflateTransition(R.transition.detail_transition)
-                            sharedElementReturnTransition = TransitionInflater.from(this@TimelineFragment.requireContext()).inflateTransition(R.transition.detail_transition)
-                        }
+    private inline fun <reified VH : RecyclerView.ViewHolder> showDetail(headerAdapter: HeaderAdapter<VH>, fileId: Int) {
+        binding.apply {
+            recyclerView.findViewHolderForItemId(fileId.toLong())
+                    ?.let { it as? DataBindingViewHolder<*> }
+                    ?.run {
+                        val position = headerAdapter.getAdapterPosition(adapterPosition)
+                        binding.let { it as? TimelineGridCellBinding }
+                                ?.run {
+                                    this@TimelineFragment.viewModel.currentPage = position
 
-                        exitTransition = TransitionInflater.from(requireContext())
-                                .inflateTransition(R.transition.fade_transition)
-                                .apply {
-                                    excludeTarget(imageView, true)
+                                    val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                            requireActivity(),
+                                            Pair(imageView, imageView.transitionName)
+                                    )
+                                    val extras = ActivityNavigator.Extras(options)
+                                    val direction = PagerActivityDirections.actionShowPhoto("", position)
+                                    findNavController().navigate(direction, extras)
                                 }
-
-                        it.beginTransaction()
-                                .setReorderingAllowed(true)
-                                .addSharedElement(imageView, imageView.transitionName)
-                                .replace(R.id.container, detailFragment)
-                                .addToBackStack(null)
-                                .commit()
                     }
-                }
+        }
     }
-}
-
-class Header(val title: String, override val itemViewType: Int = R.layout.main_grid_header) : HeaderAdapter.HeaderInfo<DataBindingViewHolder<ViewDataBinding>> {
-
-    override val itemId: Long = -title.hashCode().toLong()
-
-    override fun bindTo(viewHolder: DataBindingViewHolder<ViewDataBinding>) {
-        viewHolder.bind(this)
-    }
-}
-
-private class TimelineAdapter constructor(
-        private val fragment: TimelineFragment
-) : DataBindingPagedListAdapter<FileEntry, ViewDataBinding>(DIFF_CALLBACK) {
 
     companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<FileEntry>() {
+        private val diffCallback = object : DiffUtil.ItemCallback<FileEntry>() {
             override fun areItemsTheSame(oldItem: FileEntry, newItem: FileEntry): Boolean {
                 return oldItem.fileId == newItem.fileId
             }
@@ -199,46 +191,46 @@ private class TimelineAdapter constructor(
         }
     }
 
-    init {
-        setHasStableIds(true)
-    }
 
-    override fun onBindViewHolder(holder: DataBindingViewHolder<ViewDataBinding>, position: Int) {
-        super.onBindViewHolder(holder, position)
-        val cell = getItem(position)
-        if (holder.binding is MainGridCellBinding && cell is FileEntry) {
-            holder.binding.apply {
-                ViewCompat.setTransitionName(imageView, cell.url)
+    private inner class TimelineAdapter : DataBindingPagedListAdapter<FileEntry, ViewDataBinding>(diffCallback) {
 
-                eventListener = fragment.timelineViewModel
+        init {
+            setHasStableIds(true)
+        }
 
-                GlideApp.with(holder.itemView)
-                        .load(fragment.timelineViewModel.thumbnailUrl(cell))
-                        .also {
-                            if (position == fragment.timelineViewModel.currentPage) {
-                                it.listener(object : RequestListener<Drawable> {
-                                    override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>?, isFirstResource: Boolean): Boolean {
-                                        fragment.startPostponedEnterTransition()
-                                        return false
-                                    }
+        override fun onBindViewHolder(holder: DataBindingViewHolder<ViewDataBinding>, position: Int) {
+            super.onBindViewHolder(holder, position)
+            val cell = getItem(position)
+            if (holder.binding is TimelineGridCellBinding && cell is FileEntry) {
+                holder.binding.apply {
+                    ViewCompat.setTransitionName(imageView, cell.url)
 
-                                    override fun onResourceReady(resource: Drawable?, model: Any?, target: Target<Drawable>?, dataSource: DataSource?, isFirstResource: Boolean): Boolean {
-                                        fragment.startPostponedEnterTransition()
-                                        return false
-                                    }
-                                })
-                            }
-                        }
-                        .into(imageView)
+                    videoIndicator.visibility = if (cell.contentType.startsWith("video")) View.VISIBLE else View.GONE
+
+                    eventListener = viewModel
+
+                    GlideApp.with(holder.itemView)
+                            .load(viewModel.thumbnailUrl(cell))
+                            .into(imageView)
+                }
             }
         }
-    }
 
-    override fun getItemId(position: Int): Long {
-        return getItem(position)?.fileId?.toLong() ?: NO_ID
-    }
+        override fun getItemId(position: Int): Long {
+            return getItem(position)?.fileId?.toLong() ?: RecyclerView.NO_ID
+        }
 
-    override fun getLayoutId(position: Int): Int {
-        return R.layout.main_grid_cell
+        override fun getLayoutId(position: Int): Int {
+            return R.layout.timeline_grid_cell
+        }
+    }
+}
+
+class Header(val title: String, override val itemViewType: Int = R.layout.timeline_grid_header) : HeaderAdapter.HeaderInfo<DataBindingViewHolder<ViewDataBinding>> {
+
+    override val itemId: Long = -title.hashCode().toLong()
+
+    override fun bindTo(viewHolder: DataBindingViewHolder<ViewDataBinding>) {
+        viewHolder.bind(this)
     }
 }

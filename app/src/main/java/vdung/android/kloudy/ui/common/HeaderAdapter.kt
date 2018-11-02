@@ -1,4 +1,4 @@
-package vdung.android.kloudy.ui.widget
+package vdung.android.kloudy.ui.common
 
 import android.util.SparseArray
 import android.view.ViewGroup
@@ -118,9 +118,7 @@ class HeaderAdapter<VH : RecyclerView.ViewHolder>(
     }
 
     override fun getItemId(position: Int): Long {
-        return headers.get(position)?.itemId ?: getAdapterPosition(position).let {
-            if (it < adapter.itemCount) adapter.getItemId(it) else RecyclerView.NO_ID
-        }
+        return headers.get(position)?.itemId ?: adapter.getItemId(getAdapterPosition(position))
     }
 
     fun getAdapterPosition(position: Int): Int {

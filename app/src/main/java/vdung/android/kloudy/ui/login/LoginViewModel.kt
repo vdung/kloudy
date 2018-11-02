@@ -11,14 +11,14 @@ import io.reactivex.schedulers.Schedulers
 import okhttp3.Credentials
 import retrofit2.Retrofit
 import vdung.android.kloudy.BR
-import vdung.android.kloudy.data.KloudyDatabase
 import vdung.android.kloudy.data.nextcloud.NextcloudService
-import vdung.android.kloudy.data.model.User
-import vdung.android.kloudy.ui.ObservableViewModel
+import vdung.android.kloudy.data.user.User
+import vdung.android.kloudy.data.user.UserRepository
+import vdung.android.kloudy.ui.common.ObservableViewModel
 import javax.inject.Inject
 
 class LoginViewModel @Inject constructor(
-        private val database: KloudyDatabase,
+        private val userRepository: UserRepository,
         private val retrofitBuilder: Retrofit.Builder
 ) : ObservableViewModel() {
     var server: String = ""
@@ -65,7 +65,7 @@ class LoginViewModel @Inject constructor(
         disposable.add(userProcessor
                 .observeOn(Schedulers.io())
                 .subscribe({
-                    database.userDao().insert(it)
+                    userRepository.setUser(it)
                 }, {
                     loginErrorProcessor.onNext(it)
                 })
@@ -88,7 +88,7 @@ class LoginViewModel @Inject constructor(
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
                     userProcessor.onNext(User(
-                            username = username, password = password, server = server, isCurrent = true, isValid = true
+                            username = username, password = password, server = server
                     ))
                 }, {
                     loginErrorProcessor.onNext(it)

@@ -1,4 +1,4 @@
-package vdung.android.kloudy.ui.widget
+package vdung.android.kloudy.ui.common
 
 import android.view.LayoutInflater
 import android.view.View

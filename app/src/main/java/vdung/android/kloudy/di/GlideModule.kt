@@ -15,6 +15,9 @@ import java.io.InputStream
 import javax.inject.Inject
 import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory
 import com.bumptech.glide.GlideBuilder
+import com.bumptech.glide.load.engine.cache.LruResourceCache
+
+
 
 
 @GlideModule
@@ -23,8 +26,10 @@ class CloudGalleryGlideModule : AppGlideModule() {
     lateinit var callFactory: Call.Factory
 
     override fun applyOptions(context: Context, builder: GlideBuilder) {
-        val diskCacheSizeBytes = 1024 * 1024 * 100 // 100 MB
+        val diskCacheSizeBytes = 1024 * 1024 * 200 // 100 MB
         builder.setDiskCache(InternalCacheDiskCacheFactory(context, diskCacheSizeBytes.toLong()))
+        val memoryCacheSizeBytes = 1024 * 1024 * 20 // 20mb
+        builder.setMemoryCache(LruResourceCache(memoryCacheSizeBytes.toLong()))
     }
 
     override fun registerComponents(context: Context, glide: Glide, registry: Registry) {

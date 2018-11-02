@@ -1,11 +1,21 @@
 package vdung.android.kloudy.data.nextcloud
 
 import android.net.Uri
-import vdung.android.kloudy.data.model.User
+import vdung.android.kloudy.data.model.FileEntry
+import vdung.android.kloudy.data.user.User
+import java.io.File
 
-class NextcloudConfig(val user: User) {
+class NextcloudConfig(
+        val user: User,
+        val cacheDir: File
+) {
 
     val baseUri = Uri.parse(user.server)
+    val ignoredMimeTypes = listOf(
+            "video/quicktime",
+            "video/x-msvideo",
+            "video/x-ms-wmv"
+    )
 
     fun fullUri(encodedPath: String): Uri {
         return baseUri.buildUpon().encodedPath(encodedPath).build()
@@ -22,5 +32,21 @@ class NextcloudConfig(val user: User) {
                     }
                 }
                 .build()
+    }
+
+    fun previewUri(fileId: Int, width: Int = 400, height: Int = 200): Uri {
+        return Uri.withAppendedPath(baseUri, "index.php/apps/gallery/preview/$fileId")
+                .buildUpon()
+                .appendQueryParameter("width", width.toString())
+                .appendQueryParameter("height", height.toString())
+                .build()
+    }
+
+    fun preferedPreviewUri(fileEntry: FileEntry): Uri {
+        return if (fileEntry.contentType.startsWith("image")) {
+            previewUri(fileEntry.fileId)
+        } else {
+            thumbnailUri(fileEntry.url)
+        }
     }
 }

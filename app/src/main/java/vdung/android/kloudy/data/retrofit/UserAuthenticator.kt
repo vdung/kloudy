@@ -1,15 +1,15 @@
 package vdung.android.kloudy.data.retrofit
 
 import okhttp3.*
-import vdung.android.kloudy.data.model.UserDao
+import vdung.android.kloudy.data.user.UserRepository
 
 class UserAuthenticator(
-        private val userDao: UserDao
+        private val userRepository: UserRepository
 ) : Authenticator, Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val user = userDao.getActiveUser()
+        val user = userRepository.getUser()
 
-        if (user != null && user.isValid) {
+        if (user != null) {
             return chain.proceed(chain.request().withAuthorization(Credentials.basic(user.username, user.password)))
         }
 
@@ -17,23 +17,15 @@ class UserAuthenticator(
     }
 
     override fun authenticate(route: Route, response: Response): Request? {
-        val user = userDao.getActiveUser() ?: return null
+        val user = userRepository.getUser() ?: return null
         val request = response.request()
         if (request.header("Authorization") == Credentials.basic(user.username, user.password)) {
-            if (user.isValid) {
-                userDao.update(user.copy(isValid = false))
-            }
-
             return null
         }
 
-        if (user.isValid) {
-            return response
-                    .request()
-                    .withAuthorization(Credentials.basic(user.username, user.password))
-        }
-
-        return null
+        return response
+                .request()
+                .withAuthorization(Credentials.basic(user.username, user.password))
     }
 
     private fun Request.withAuthorization(authorization: String) = this.newBuilder().header("Authorization", authorization).build()

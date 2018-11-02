@@ -4,4 +4,12 @@
     <string name="password">Password</string>
     <string name="server">Server</string>
     <string name="login">login</string>
+    <string name="title_timeline">Timeline</string>
+    <string name="title_album">Albums</string>
+    <string name="action_use_as">Use as</string>
+    <string name="action_share">Share</string>
+    <string name="message_downloading_file">Downloading file</string>
+
+    <string name="file_provider">vdung.android.kloudy.fileprovider</string>
+    <string name="action_open_in">Open in</string>
 </resources>

@@ -1,4 +1,4 @@
-package vdung.android.kloudy.ui
+package vdung.android.kloudy.ui.common
 
 import androidx.databinding.Observable
 import androidx.databinding.PropertyChangeRegistry

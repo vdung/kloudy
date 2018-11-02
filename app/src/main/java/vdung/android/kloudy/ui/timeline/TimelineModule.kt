@@ -13,7 +13,8 @@ abstract class TimelineModule {
 
     @FragmentScoped
     @ContributesAndroidInjector
-    abstract fun fragment(): TimelineFragment
+    abstract fun timelineFragment(): TimelineFragment
+
 
     @Binds
     @IntoMap

@@ -4,7 +4,9 @@ import android.util.SparseArray
 import androidx.lifecycle.LiveDataReactiveStreams
 import androidx.lifecycle.ViewModel
 import io.reactivex.Flowable
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.processors.PublishProcessor
+import io.reactivex.schedulers.Schedulers
 import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.data.fetch
 import vdung.android.kloudy.data.model.FileEntry
@@ -15,14 +17,16 @@ import javax.inject.Inject
 class TimelineViewModel @Inject constructor(
         private val nextcloudRepository: NextcloudRepository,
         private val nextcloudConfig: NextcloudConfig
-) : ViewModel(), CellEventListener {
+) : ViewModel(), TimelineEventListener {
 
-    private val fileEntriesResource = nextcloudRepository.pagedEntries()
-    private val imageViewClickProcessor = PublishProcessor.create<Int>()
+    private val fileEntriesResource = nextcloudRepository.fetchAllEntries()
+    private val entryClickProcessor = PublishProcessor.create<Int>()
 
     val isRefreshing = LiveDataReactiveStreams.fromPublisher(Flowable.fromPublisher(fileEntriesResource).map { it is Result.Pending })
     val loadFilesResult = LiveDataReactiveStreams.fromPublisher(
             Flowable.fromPublisher(fileEntriesResource)
+                    .observeOn(Schedulers.io())
+                    .filter { it is Result.Success }
                     .map {
                         val groups = nextcloudRepository.groupFilesByMonth()
                         val headers = SparseArray<String>()
@@ -35,27 +39,26 @@ class TimelineViewModel @Inject constructor(
 
                         return@map Pair(it, headers)
                     }
+                    .observeOn(AndroidSchedulers.mainThread())
     )
 
-    val entryClickEvent
-        get() = LiveDataReactiveStreams.fromPublisher(imageViewClickProcessor)
+    val entryClickEvent get() = LiveDataReactiveStreams.fromPublisher(entryClickProcessor)
 
     var currentPage = 0
-    val fileEntries: List<FileEntry> get() = loadFilesResult.value?.first?.value ?: emptyList()
 
     fun thumbnailUrl(fileEntry: FileEntry): String {
-        return nextcloudConfig.thumbnailUri(fileEntry.url).toString()
+        return nextcloudConfig.preferedPreviewUri(fileEntry).toString()
     }
 
     fun refresh() {
         fileEntriesResource.fetch()
     }
 
-    override fun onImageViewClick(itemId: Int) {
-        imageViewClickProcessor.onNext(itemId)
+    override fun onFileEntryClick(itemId: Int) {
+        entryClickProcessor.onNext(itemId)
     }
 }
 
-interface CellEventListener {
-    fun onImageViewClick(itemId: Int)
+interface TimelineEventListener {
+    fun onFileEntryClick(itemId: Int)
 }

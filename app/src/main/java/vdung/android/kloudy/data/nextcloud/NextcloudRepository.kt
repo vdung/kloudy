@@ -6,16 +6,21 @@ import androidx.paging.RxPagedListBuilder
 import io.reactivex.BackpressureStrategy
 import io.reactivex.Flowable
 import io.reactivex.schedulers.Schedulers
+import okio.Buffer
+import okio.ForwardingSource
+import okio.Okio
 import org.reactivestreams.Publisher
 import org.xmlpull.v1.XmlPullParser
 import vdung.android.kloudy.data.NetworkResourcePublisher
+import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.data.fetch
+import vdung.android.kloudy.data.model.DirectoryQueryResult
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.data.model.FileEntryDao
-import vdung.android.kloudy.data.model.FileEntryWithDate
-import vdung.android.kloudy.data.model.User
+import vdung.android.kloudy.data.model.FileMetadataDao
 import vdung.kodav.*
 import vdung.kodav.okhttp.searchRequest
+import java.io.File
 
 data class FileId(override val value: Int?) : Prop<Int> {
     companion object : Prop.Parser<FileId> {
@@ -28,16 +33,23 @@ data class FileId(override val value: Int?) : Prop<Int> {
 class NextcloudRepository(
         private val service: NextcloudService,
         private val fileEntryDao: FileEntryDao,
+        private val fileMetadataDao: FileMetadataDao,
         private val config: NextcloudConfig
-): FileEntryDao by fileEntryDao {
+) : FileEntryDao by fileEntryDao, FileMetadataDao by fileMetadataDao {
+
+    data class Download(
+            val bytesRead: Long,
+            val contentLength: Long,
+            val file: File?
+    )
 
     init {
         Prop.register(FileId)
     }
 
-    fun pagedEntries(path: String = "", depth: Int = Scope.DEPTH_INFINITY) = object : NetworkResourcePublisher<PagedList<FileEntry>, Unit, MultiStatus>() {
+    fun fetchAllEntries(path: String = "", depth: Int = Scope.DEPTH_INFINITY) = object : NetworkResourcePublisher<PagedList<FileEntry>, Unit, MultiStatus>() {
         override fun localData(): Publisher<PagedList<FileEntry>> {
-            return RxPagedListBuilder(fileEntryDao.filesSortedDescendingByLastModified(), PagedList.Config.Builder().setPageSize(50).setPrefetchDistance(150).build())
+            return RxPagedListBuilder(fileEntryDao.getFilesSortedByLastModifiedDescending(), PagedList.Config.Builder().setPageSize(50).setPrefetchDistance(150).build())
                     .setBoundaryCallback(object : PagedList.BoundaryCallback<FileEntry>() {
                         override fun onZeroItemsLoaded() {
                             fetch()
@@ -50,11 +62,61 @@ class NextcloudRepository(
 
         override fun fetchFromNetwork(arg: Unit): Publisher<MultiStatus> = service.search(createSearchRequest(path, depth)).toFlowable().subscribeOn(Schedulers.io())
 
-        override fun saveNetworkResult(networkData: MultiStatus) = updateDatabase(multiStatusToPhotoList(networkData))
+        override fun saveNetworkResult(networkData: MultiStatus) = updateDatabase(multiStatusToFileEntries(networkData))
+    }
+
+    fun albums(): Publisher<PagedList<DirectoryQueryResult>> {
+        return RxPagedListBuilder(fileMetadataDao.getAllDirectories(), 20).buildFlowable(BackpressureStrategy.LATEST)
+    }
+
+    fun albumFiles(directory: String, initialLoadPosition: Int = 0): Publisher<PagedList<FileEntry>> {
+        return RxPagedListBuilder(fileMetadataDao.getFilesInDirectory(directory), 20)
+                .setInitialLoadKey(initialLoadPosition)
+                .buildFlowable(BackpressureStrategy.LATEST)
+    }
+
+    fun allFiles(initialLoadPosition: Int = 0): Publisher<PagedList<FileEntry>> {
+        return RxPagedListBuilder(fileEntryDao.getFilesSortedByLastModifiedDescending(), 20)
+                .setInitialLoadKey(initialLoadPosition)
+                .buildFlowable(BackpressureStrategy.LATEST)
+    }
+
+    fun downloadFile(fileEntry: FileEntry): Publisher<Result<Download>> {
+        val fileUri = Uri.parse(fileEntry.url)
+        val name = fileEntry.name ?: fileUri.lastPathSegment
+        val directory = File(config.cacheDir, fileUri.path!!.removeSuffix(name))
+        directory.mkdirs()
+
+        val file = File(directory, name)
+
+        return service.downloadFile(fileEntry.url)
+                .toFlowable()
+                .flatMap { body ->
+                    Flowable.using({ Okio.buffer(Okio.sink(file)) }, { sink ->
+                        Flowable.create<Result<Download>>({ emitter ->
+                            val contentLength = body.contentLength()
+                            val source = object : ForwardingSource(Okio.buffer(body.source())) {
+                                var totalBytesRead = 0L
+
+                                override fun read(sink: Buffer, byteCount: Long): Long {
+                                    val bytesRead = super.read(sink, byteCount)
+                                    totalBytesRead += if (bytesRead != -1L) bytesRead else 0
+                                    emitter.onNext(Result.Pending(Download(totalBytesRead, contentLength, null)))
+
+                                    return bytesRead
+                                }
+                            }
+                            sink.writeAll(source)
+                            emitter.onNext(Result.Success(Download(source.totalBytesRead, contentLength, file)))
+                            emitter.onComplete()
+                        }, BackpressureStrategy.LATEST)
+                    }, { it.close() })
+                }
+                .onErrorReturn { Result.Error(it, Download(0, -1, null)) }
     }
 
     private fun updateDatabase(fileEntries: List<FileEntry>) {
-        fileEntryDao.upsertAndDeleteInvalidEntries(fileEntries)
+        fileEntryDao.upsertAndDeleteInvalidEntries(fileMetadataDao, fileEntries)
     }
 
     private fun createSearchRequest(path: String, depth: Int) = searchRequest {
@@ -83,23 +145,35 @@ class NextcloudRepository(
                             }
                             literal("image/%")
                         }
-                        eq {
+                        like {
                             prop {
                                 -GetContentType.tag
                             }
-                            literal("video/mp4")
+                            literal("video/%")
                         }
+                    }
+                    not {
                         eq {
                             prop {
                                 -GetContentType.tag
                             }
-                            literal("video/m4v")
+                            literal("video/quicktime")
                         }
+                    }
+                    not {
                         eq {
                             prop {
                                 -GetContentType.tag
                             }
-                            literal("video/mkv")
+                            literal("video/x-msvideo")
+                        }
+                    }
+                    not {
+                        eq {
+                            prop {
+                                -GetContentType.tag
+                            }
+                            literal("video/x-ms-wmv")
                         }
                     }
                     gt {
@@ -113,7 +187,7 @@ class NextcloudRepository(
         }
     }
 
-    private fun multiStatusToPhotoList(multiStatus: MultiStatus, thumbnailSize: Int = 256) =
+    private fun multiStatusToFileEntries(multiStatus: MultiStatus) =
             multiStatus.responses
                     .asSequence()
                     .mapNotNull {

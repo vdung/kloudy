@@ -1,8 +1,18 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.MaterialComponents">
+    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
         <!-- Customize your theme here. -->
+    </style>
+
+    <style name="FullscreenTheme" parent="Theme.MaterialComponents">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:statusBarColor">@color/black_overlay</item>
+    </style>
+
+    <style name="FullscreenActionBarStyle" parent="Widget.MaterialComponents.Toolbar">
+        <item name="android:background">@color/black_overlay</item>
     </style>
 
 </resources>

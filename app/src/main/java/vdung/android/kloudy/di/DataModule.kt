@@ -1,6 +1,7 @@
 package vdung.android.kloudy.di
 
 import android.content.Context
+import android.preference.PreferenceManager
 import androidx.room.Room
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory
 import com.google.android.exoplayer2.util.Util
@@ -16,15 +17,18 @@ import vdung.android.kloudy.data.nextcloud.NextcloudConfig
 import vdung.android.kloudy.data.nextcloud.NextcloudRepository
 import vdung.android.kloudy.data.nextcloud.NextcloudService
 import vdung.android.kloudy.data.retrofit.UserAuthenticator
+import vdung.android.kloudy.data.user.KeyStoreWrapper
+import vdung.android.kloudy.data.user.UserRepository
 import vdung.kodav.retrofit.WebDavConverterFactory
+import java.io.File
 import javax.inject.Singleton
 
 @Module
 class DataModule {
 
     @Provides
-    fun provideCallFactory(database: KloudyDatabase): Call.Factory = OkHttpClient.Builder()
-            .addInterceptor(UserAuthenticator(database.userDao()))
+    fun provideCallFactory(userRepository: UserRepository): Call.Factory = OkHttpClient.Builder()
+            .addInterceptor(UserAuthenticator(userRepository))
             .build()
 
     @Provides
@@ -35,10 +39,17 @@ class DataModule {
     }
 
     @Provides
-    fun provideNextcloudConfig(database: KloudyDatabase): NextcloudConfig {
-        val user = database.userDao().getActiveUser() ?: throw IllegalStateException("no user")
+    @Singleton
+    fun provideUserRepository(context: Context): UserRepository {
+        val keyStorage = KeyStoreWrapper(context)
+        return UserRepository(keyStorage, PreferenceManager.getDefaultSharedPreferences(context))
+    }
 
-        return NextcloudConfig(user)
+    @Provides
+    fun provideNextcloudConfig(context: Context, userRepository: UserRepository): NextcloudConfig {
+        val user = userRepository.getUser() ?: throw IllegalStateException("no user")
+
+        return NextcloudConfig(user, File(context.externalCacheDir, "downloads"))
     }
 
     @Provides
@@ -49,18 +60,19 @@ class DataModule {
                 .build()
                 .create(NextcloudService::class.java)
 
-        return NextcloudRepository(service, database.fileDao(), config)
+        return NextcloudRepository(service, database.fileDao(), database.fileMetadataDao(), config)
     }
 
     @Provides
     @Singleton
     fun provideDatabase(context: Context): KloudyDatabase {
-        return Room.databaseBuilder(context, KloudyDatabase::class.java, "kloudy").allowMainThreadQueries().build()
+        return Room.databaseBuilder(context, KloudyDatabase::class.java, "kloudy").build()
     }
 
     @Provides
-    fun provideExoDataSource(context: Context, database: KloudyDatabase): com.google.android.exoplayer2.upstream.DataSource.Factory {
-        val user = database.userDao().getActiveUser() ?: throw IllegalStateException("no user")
+    fun provideExoDataSource(context: Context, userRepository: UserRepository): com.google.android.exoplayer2.upstream.DataSource.Factory {
+        val user = userRepository.getUser() ?: throw IllegalStateException("no user")
+
         val dataSourceFactory = DefaultHttpDataSourceFactory(Util.getUserAgent(context, "Kloudy"))
         dataSourceFactory.defaultRequestProperties.set("Authorization", Credentials.basic(user.username, user.password))
 

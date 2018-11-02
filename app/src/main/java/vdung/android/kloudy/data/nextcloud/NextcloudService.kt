@@ -3,10 +3,7 @@ package vdung.android.kloudy.data.nextcloud
 import io.reactivex.Single
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.HTTP
-import retrofit2.http.Header
+import retrofit2.http.*
 import vdung.kodav.MultiStatus
 
 interface NextcloudService {
@@ -16,4 +13,7 @@ interface NextcloudService {
 
     @GET("index.php/apps/files/")
     fun ping(@Header("Authorization") credentials: String): Single<ResponseBody>
+
+    @GET
+    fun downloadFile(@Url url: String): Single<ResponseBody>
 }

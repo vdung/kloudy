@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph_timeline"
+    app:startDestination="@id/timeline_fragment">
+
+    <fragment
+        android:id="@+id/timeline_fragment"
+        android:name="vdung.android.kloudy.ui.timeline.TimelineFragment"
+        android:label="@string/title_timeline">
+
+        <action
+            android:id="@+id/action_show_photo"
+            app:destination="@+id/pager_activity" />
+
+    </fragment>
+
+    <activity
+        android:id="@+id/pager_activity"
+        android:name="vdung.android.kloudy.ui.pages.PagerActivity"
+        android:label="pager_activity"
+        tools:layout="@layout/pager_activity">
+        <argument
+            android:name="directory"
+            app:argType="string" />
+        <argument
+            android:name="position"
+            app:argType="integer" />
+    </activity>
+</navigation>

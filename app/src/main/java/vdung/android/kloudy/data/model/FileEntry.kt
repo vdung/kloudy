@@ -1,11 +1,14 @@
 package vdung.android.kloudy.data.model
 
+import android.net.Uri
+import android.os.Parcelable
 import androidx.paging.DataSource
 import androidx.room.*
-import io.reactivex.Flowable
+import kotlinx.android.parcel.Parcelize
 import java.util.*
 
 @Entity(tableName = "fileEntry")
+@Parcelize
 data class FileEntry(
         @PrimaryKey val fileId: Int,
         val url: String,
@@ -13,12 +16,7 @@ data class FileEntry(
         val name: String?,
         val lastModified: Date,
         val isSyncing: Boolean = false
-)
-
-data class FileEntryWithDate(
-        @Embedded val entry: FileEntry,
-        val year: String
-)
+) : Parcelable
 
 data class GroupedByMonth(
         val month: String,
@@ -42,17 +40,14 @@ interface FileEntryDao {
     @Query("DELETE FROM fileEntry WHERE isSyncing = 1")
     fun deleteInvalidEntries()
 
-    @Query("SELECT *, strftime('%Y-%m-%d', datetime(lastModified/1000, 'unixepoch')) AS year FROM fileEntry")
-    fun allFiles(): Flowable<List<FileEntryWithDate>>
-
     @Query("SELECT month, count(*) as count FROM (SELECT strftime('%Y-%m', lastModified/1000, 'unixepoch', 'localtime') AS month FROM fileEntry) GROUP BY month ORDER BY month DESC")
     fun groupFilesByMonth(): List<GroupedByMonth>
 
     @Query("SELECT * FROM fileEntry ORDER BY lastModified DESC")
-    fun filesSortedDescendingByLastModified(): DataSource.Factory<Int, FileEntry>
+    fun getFilesSortedByLastModifiedDescending(): DataSource.Factory<Int, FileEntry>
 
     @Transaction
-    fun upsertAndDeleteInvalidEntries(fileEntries: List<FileEntry>) {
+    fun upsertAndDeleteInvalidEntries(metadataDao: FileMetadataDao, fileEntries: List<FileEntry>) {
         markForSync()
 
         val insertResults = insert(fileEntries)
@@ -62,5 +57,12 @@ interface FileEntryDao {
 
         update(entriesToUpdate)
         deleteInvalidEntries()
+
+        metadataDao.deleteAll()
+        metadataDao.insertAll(fileEntries.map {
+            val uri = Uri.parse(it.url)
+            val name = uri.lastPathSegment!!
+            return@map FileMetadata(it.fileId, uri.path!!.removeSuffix(name), name)
+        })
     }
 }

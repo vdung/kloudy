@@ -6,16 +6,16 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.data.model.FileEntryDao
-import vdung.android.kloudy.data.model.User
-import vdung.android.kloudy.data.model.UserDao
+import vdung.android.kloudy.data.model.FileMetadata
+import vdung.android.kloudy.data.model.FileMetadataDao
 import java.util.*
 
 
-@Database(entities = [User::class, FileEntry::class], version = 1)
+@Database(entities = [FileEntry::class, FileMetadata::class], version = 1)
 @TypeConverters(Converters::class)
 abstract class KloudyDatabase : RoomDatabase() {
-    abstract fun userDao(): UserDao
     abstract fun fileDao(): FileEntryDao
+    abstract fun fileMetadataDao(): FileMetadataDao
 }
 
 class Converters {

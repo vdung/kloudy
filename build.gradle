@@ -5,7 +5,8 @@ buildscript {
         versions = [
                 'kotlin': '1.2.71',
                 'dagger': '2.16',
-                'rxjava': '2.2.2'
+                'rxjava': '2.2.2',
+                'retrofit': '2.4.0'
         ]
     }
 
@@ -19,6 +20,7 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$versions.kotlin"
+        classpath "android.arch.navigation:navigation-safe-args-gradle-plugin:1.0.0-alpha06"
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

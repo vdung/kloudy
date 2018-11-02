@@ -1,4 +1,4 @@
-package vdung.android.kloudy.ui.widget
+package vdung.android.kloudy.ui.common
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -16,6 +16,11 @@ abstract class DataBindingPagedListAdapter<T, VDB : ViewDataBinding>(diffUtilCal
 
     override fun onBindViewHolder(holder: DataBindingViewHolder<VDB>, position: Int) {
         getItem(position)?.let { holder.bind(it!!) }
+    }
+
+    override fun onViewRecycled(holder: DataBindingViewHolder<VDB>) {
+        super.onViewRecycled(holder)
+        holder.binding.unbind()
     }
 
     override fun getItemViewType(position: Int): Int {

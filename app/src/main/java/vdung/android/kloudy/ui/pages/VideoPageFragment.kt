@@ -1,47 +1,36 @@
 package vdung.android.kloudy.ui.pages
 
-import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.ViewCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
-import com.bumptech.glide.request.target.CustomViewTarget
-import com.bumptech.glide.request.transition.Transition
 import com.evernote.android.state.State
 import com.evernote.android.state.StateSaver
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.upstream.DataSource
 import dagger.android.support.DaggerFragment
+import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.databinding.VideoPageFragmentBinding
-import vdung.android.kloudy.di.GlideApp
-import vdung.android.kloudy.ui.timeline.TimelineViewModel
-import vdung.android.kloudy.ui.widget.FragmentStartTransitionListener
 import javax.inject.Inject
 
 class VideoPageFragment : DaggerFragment() {
 
     companion object {
-        private const val ARG_POSITION = "ARG_POSITION"
+        private const val ARG_FILE_ENTRY = "ARG_FILE_ENTRY"
 
-        fun newInstance(position: Int) = VideoPageFragment().apply {
+        fun newInstance(fileEntry: FileEntry) = VideoPageFragment().apply {
             arguments = Bundle().apply {
-                putInt(ARG_POSITION, position)
+                putParcelable(ARG_FILE_ENTRY, fileEntry)
             }
         }
     }
 
-    private lateinit var viewModel: TimelineViewModel
     internal lateinit var binding: VideoPageFragmentBinding
 
-    @Inject
-    internal lateinit var viewModelFactory: ViewModelProvider.Factory
     @Inject
     internal lateinit var exoDataSourceFactory: DataSource.Factory
     private var isPlayerInitialized = false
@@ -68,31 +57,15 @@ class VideoPageFragment : DaggerFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        viewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get(TimelineViewModel::class.java)
-
         if (isVisibleToUser && !isPlayerInitialized) {
             initializePlayer()
         }
 
-        val position = arguments!!.getInt(ARG_POSITION)
-        val photo = viewModel.fileEntries[position]
-        val url = Uri.parse(photo.url)
+        val fileEntry: FileEntry = arguments!!.getParcelable(ARG_FILE_ENTRY)!!
+        val url = Uri.parse(fileEntry.url)
 
         ViewCompat.setTransitionName(binding.videoPlayer, url.toString())
-        GlideApp.with(binding.videoPlayer)
-                .load(viewModel.thumbnailUrl(photo))
-                .onlyRetrieveFromCache(true)
-                .listener(FragmentStartTransitionListener(parentFragment!!))
-                .into(object : CustomViewTarget<PlayerView, Drawable>(binding.videoPlayer) {
-                    override fun onLoadFailed(errorDrawable: Drawable?) {}
-
-                    override fun onResourceCleared(placeholder: Drawable?) {}
-
-                    override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
-                        binding.videoPlayer.useArtwork = true
-                        binding.videoPlayer.defaultArtwork = resource
-                    }
-                })
+        requireActivity().let { it as? OnPagedLoadedListener }?.onPageLoaded(fileEntry)
     }
 
     override fun onPause() {
@@ -131,7 +104,7 @@ class VideoPageFragment : DaggerFragment() {
     override fun setUserVisibleHint(isVisibleToUser: Boolean) {
         super.setUserVisibleHint(isVisibleToUser)
         this.isVisibleToUser = isVisibleToUser
-        if (::viewModel.isInitialized) {
+        if (::exoDataSourceFactory.isInitialized) {
             when {
                 isVisibleToUser && !isPlayerInitialized -> initializePlayer()
                 !isVisibleToUser && isPlayerInitialized -> releasePlayer()
@@ -140,9 +113,8 @@ class VideoPageFragment : DaggerFragment() {
     }
 
     private fun initializePlayer() {
-        val position = arguments!!.getInt(ARG_POSITION)
-        val photo = viewModel.fileEntries[position]
-        val url = Uri.parse(photo.url)
+        val fileEntry: FileEntry = arguments!!.getParcelable(ARG_FILE_ENTRY)!!
+        val url = Uri.parse(fileEntry.url)
 
         val videoSource = ExtractorMediaSource.Factory(exoDataSourceFactory).createMediaSource(url)
 

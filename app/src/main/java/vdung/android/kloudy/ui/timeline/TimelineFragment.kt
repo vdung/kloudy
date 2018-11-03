@@ -46,11 +46,11 @@ class TimelineFragment : DaggerFragment(), OnActivityReenterListener {
 
     override fun onAttach(context: Context?) {
         super.onAttach(context)
-        (requireActivity() as? OnActivityReenterListener.Host)?.addListener(this)
+        getParent<OnActivityReenterListener.Host>()?.addListener(this)
     }
 
     override fun onDetach() {
-        (requireActivity() as? OnActivityReenterListener.Host)?.removeListener(this)
+        getParent<OnActivityReenterListener.Host>()?.removeListener(this)
         super.onDetach()
     }
 

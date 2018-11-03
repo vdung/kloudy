@@ -29,12 +29,9 @@ import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.databinding.AlbumFragmentBinding
 import vdung.android.kloudy.databinding.AlbumPhotoCellBinding
 import vdung.android.kloudy.di.GlideApp
+import vdung.android.kloudy.ui.common.*
 import vdung.android.kloudy.ui.main.OnActivityReenterListener
 import vdung.android.kloudy.ui.pages.PagerActivityDirections
-import vdung.android.kloudy.ui.common.DataBindingPagedListAdapter
-import vdung.android.kloudy.ui.common.DataBindingViewHolder
-import vdung.android.kloudy.ui.common.Transitions
-import vdung.android.kloudy.ui.common.executePendingTransaction
 import javax.inject.Inject
 
 class AlbumFragment : DaggerFragment(), OnActivityReenterListener {
@@ -56,11 +53,11 @@ class AlbumFragment : DaggerFragment(), OnActivityReenterListener {
 
     override fun onAttach(context: Context?) {
         super.onAttach(context)
-        (requireActivity() as? OnActivityReenterListener.Host)?.addListener(this)
+        getParent<OnActivityReenterListener.Host>()?.addListener(this)
     }
 
     override fun onDetach() {
-        (requireActivity() as? OnActivityReenterListener.Host)?.removeListener(this)
+        getParent<OnActivityReenterListener.Host>()?.removeListener(this)
         super.onDetach()
     }
 

@@ -10,10 +10,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import androidx.navigation.findNavController
 import com.evernote.android.state.State
+import com.evernote.android.state.StateSaver
 import dagger.android.support.DaggerAppCompatActivity
 import vdung.android.kloudy.R
 import vdung.android.kloudy.data.user.User
-import vdung.android.kloudy.ui.login.LoginFragment
+import vdung.android.kloudy.ui.login.LoginActivity
 import javax.inject.Inject
 
 class MainActivity : DaggerAppCompatActivity(), OnActivityReenterListener.Host {
@@ -26,17 +27,28 @@ class MainActivity : DaggerAppCompatActivity(), OnActivityReenterListener.Host {
 
     @State
     var isShowingMainUI = false
+
+    @State
+    var isLoginActivityLaunched = false
+
     @State
     var fragmentStates = SparseArray<Fragment.SavedState>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        StateSaver.restoreInstanceState(this, savedInstanceState)
         setContentView(R.layout.main_activity)
 
         viewModel = ViewModelProviders.of(this, viewModelFactory).get(MainViewModel::class.java)
         viewModel.currentUser.observe(this, Observer { user ->
             when (user) {
-                User.NONE -> showLoginUI()
+                User.NONE -> {
+                    if (!isLoginActivityLaunched) {
+                        showLoginUI()
+                    } else {
+                        finish()
+                    }
+                }
                 else -> {
                     if (savedInstanceState == null && !isShowingMainUI) {
                         showMainUI()
@@ -44,6 +56,11 @@ class MainActivity : DaggerAppCompatActivity(), OnActivityReenterListener.Host {
                 }
             }
         })
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        StateSaver.saveInstanceState(this, outState)
     }
 
     override fun onSupportNavigateUp() = findNavController(R.id.main_content).navigateUp()
@@ -69,13 +86,14 @@ class MainActivity : DaggerAppCompatActivity(), OnActivityReenterListener.Host {
 
     private fun showMainUI() {
         isShowingMainUI = true
+        isLoginActivityLaunched = false
         showFragment(MainFragment.newInstance())
 
     }
 
     private fun showLoginUI() {
-        isShowingMainUI = false
-        showFragment(LoginFragment.newInstance())
+        isLoginActivityLaunched = true
+        startActivity(Intent(this, LoginActivity::class.java))
     }
 
     private fun showFragment(fragment: Fragment, config: (FragmentTransaction.() -> Unit)? = null) {

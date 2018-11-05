@@ -22,7 +22,7 @@
             android:layout_marginLeft="8dp"
             android:layout_marginRight="8dp"
             android:layout_marginBottom="8dp"
-            app:helperText="@{viewModel.serverError}"
+            app:helperText="@{viewModel.serverValidation}"
             app:helperTextEnabled="true"
             app:layout_constraintBottom_toTopOf="@id/username_input"
             app:layout_constraintLeft_toLeftOf="parent"
@@ -33,7 +33,8 @@
                 android:layout_height="wrap_content"
                 android:hint="@string/server"
                 android:inputType="textUri"
-                android:text="@={viewModel.server}" />
+                android:onTextChanged="@{(value, start, before, count) -> viewModel.onServerChange(value.toString())}"
+                android:text="@{viewModel.server}" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -53,7 +54,8 @@
                 android:layout_height="wrap_content"
                 android:hint="@string/username"
                 android:inputType="textEmailAddress"
-                android:text="@={viewModel.username}" />
+                android:onTextChanged="@{(value, start, before, count) -> viewModel.onUsernameChange(value.toString())}"
+                android:text="@{viewModel.username}" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -74,13 +76,14 @@
                 android:layout_height="wrap_content"
                 android:hint="@string/password"
                 android:inputType="textPassword"
-                android:text="@={viewModel.password}" />
+                android:onTextChanged="@{(value, start, before, count) -> viewModel.onPasswordChange(value.toString())}"
+                android:text="@{viewModel.password}" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:enabled="@{viewModel.loginValid}"
+            android:enabled="@{viewModel.isLoginAvailable}"
             android:onClick="@{() -> viewModel.login()}"
             android:text="@string/login"
             app:layout_constraintLeft_toLeftOf="parent"

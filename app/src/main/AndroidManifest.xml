@@ -28,6 +28,16 @@
             android:configChanges="orientation|screenSize|keyboard"
             android:theme="@style/FullscreenTheme" />
 
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:label="@string/title_activity_settings"
+            android:theme="@style/SettingsTheme" />
+
+        <activity
+            android:name=".ui.login.LoginActivity"
+            android:label="@string/login"
+            android:theme="@style/AppTheme" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="vdung.android.kloudy.fileprovider"

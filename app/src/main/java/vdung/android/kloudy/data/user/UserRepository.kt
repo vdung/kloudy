@@ -40,11 +40,12 @@ class UserRepository(private val keyStoreWrapper: KeyStoreWrapper, private val s
                 }
             }
 
+            emitter.onNext(getUser() ?: User.NONE)
             sharedPreferences.registerOnSharedPreferenceChangeListener(observer)
             emitter.setDisposable(Disposables.fromAction {
                 sharedPreferences.unregisterOnSharedPreferenceChangeListener(observer)
             })
-        }, BackpressureStrategy.LATEST).startWith(getUser() ?: User.NONE)
+        }, BackpressureStrategy.LATEST)
     }
 
 }

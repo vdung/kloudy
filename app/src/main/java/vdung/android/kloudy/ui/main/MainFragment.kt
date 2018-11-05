@@ -1,9 +1,9 @@
 package vdung.android.kloudy.ui.main
 
+import android.content.Intent
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import androidx.appcompat.widget.Toolbar
 import androidx.core.view.get
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
@@ -12,8 +12,9 @@ import com.evernote.android.state.StateSaver
 import dagger.android.support.DaggerFragment
 import vdung.android.kloudy.R
 import vdung.android.kloudy.databinding.MainFragmentBinding
+import vdung.android.kloudy.ui.settings.SettingsActivity
 
-class MainFragment : DaggerFragment() {
+class MainFragment : DaggerFragment(), Toolbar.OnMenuItemClickListener {
     internal lateinit var binding: MainFragmentBinding
 
     @State
@@ -22,6 +23,7 @@ class MainFragment : DaggerFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StateSaver.restoreInstanceState(this, savedInstanceState)
+        setHasOptionsMenu(true)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -35,6 +37,9 @@ class MainFragment : DaggerFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         binding.apply {
+            toolbar.inflateMenu(R.menu.main_menu)
+            toolbar.setOnMenuItemClickListener(this@MainFragment)
+
             bottomNavigation.setOnNavigationItemSelectedListener {
                 navigateToView(it.itemId)
                 return@setOnNavigationItemSelectedListener true
@@ -49,6 +54,16 @@ class MainFragment : DaggerFragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         StateSaver.saveInstanceState(this, outState)
+    }
+
+    override fun onMenuItemClick(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.navigation_settings -> {
+                startActivity(Intent(requireActivity(), SettingsActivity::class.java))
+                true
+            }
+            else -> false
+        }
     }
 
     private fun navigateToView(menuItemId: Int) {
@@ -73,7 +88,6 @@ class MainFragment : DaggerFragment() {
     }
 
     companion object {
-        fun newInstance() =
-                MainFragment()
+        fun newInstance() = MainFragment()
     }
 }

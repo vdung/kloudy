@@ -9,6 +9,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import dagger.android.support.DaggerFragment
+import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.databinding.LoginFragmentBinding
 import javax.inject.Inject
 
@@ -34,11 +35,15 @@ class LoginFragment : DaggerFragment() {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        viewModel = ViewModelProviders.of(this, viewModelFactory).get(LoginViewModel::class.java)
+        viewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get(LoginViewModel::class.java)
         binding.viewModel = viewModel
 
-        viewModel.loginErrorEvent.observe(this, Observer {
-            Toast.makeText(requireContext(), it.toString(), Toast.LENGTH_LONG).show()
+        viewModel.loginResult.observe(this, Observer {
+            when (it) {
+                is Result.Error -> {
+                    Toast.makeText(requireContext(), it.error.localizedMessage, Toast.LENGTH_LONG).show()
+                }
+            }
         })
     }
 }

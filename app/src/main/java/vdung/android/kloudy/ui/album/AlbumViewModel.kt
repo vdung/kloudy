@@ -1,8 +1,8 @@
 package vdung.android.kloudy.ui.album
 
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.LiveDataReactiveStreams
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.toLiveData
 import androidx.paging.PagedList
 import io.reactivex.processors.PublishProcessor
 import vdung.android.kloudy.data.model.DirectoryQueryResult
@@ -20,16 +20,16 @@ class AlbumViewModel @Inject constructor(
     private val entryClickProcessor = PublishProcessor.create<Int>()
 
     val albums: LiveData<PagedList<DirectoryQueryResult>> by lazy {
-        return@lazy LiveDataReactiveStreams.fromPublisher(nextcloudRepository.albums())
+        return@lazy nextcloudRepository.albums().toLiveData()
     }
 
-    val albumClickEvent get() = LiveDataReactiveStreams.fromPublisher(albumClickProcessor)
-    val entryClickEvent get() = LiveDataReactiveStreams.fromPublisher(entryClickProcessor)
+    val albumClickEvent get() = albumClickProcessor.toLiveData()
+    val entryClickEvent get() = entryClickProcessor.toLiveData()
 
-    fun albumFiles(directory: String) = LiveDataReactiveStreams.fromPublisher(nextcloudRepository.albumFiles(directory))
+    fun albumFiles(directory: String) = nextcloudRepository.albumFiles(directory).toLiveData()
 
     fun thumbnailUrl(fileEntry: FileEntry): String {
-        return nextcloudConfig.preferedPreviewUri(fileEntry).toString()
+        return nextcloudConfig.preferredPreviewUri(fileEntry).toString()
     }
 
     override fun onAlbumClick(directory: String) {

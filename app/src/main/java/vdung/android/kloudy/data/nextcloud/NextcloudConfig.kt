@@ -44,7 +44,7 @@ class NextcloudConfig(
                 .build()
     }
 
-    fun preferedPreviewUri(fileEntry: FileEntry): Uri {
+    fun preferredPreviewUri(fileEntry: FileEntry): Uri {
         return if (fileEntry.contentType.startsWith("image")) {
             previewUri(fileEntry.fileId)
         } else {

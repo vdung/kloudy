@@ -47,7 +47,7 @@ class TimelineViewModel @Inject constructor(
     var currentPage = 0
 
     fun thumbnailUrl(fileEntry: FileEntry): String {
-        return nextcloudConfig.preferedPreviewUri(fileEntry).toString()
+        return nextcloudConfig.preferredPreviewUri(fileEntry).toString()
     }
 
     fun refresh() {

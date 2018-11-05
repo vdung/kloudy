@@ -28,6 +28,7 @@ class UserPreference(context: Context?, attrs: AttributeSet?) : Preference(conte
     override fun onAttached() {
         super.onAttached()
         keyStoreWrapper = KeyStoreWrapper(context)
+        intent = Intent(context, LoginActivity::class.java)
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {

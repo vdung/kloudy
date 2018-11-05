@@ -3,11 +3,9 @@ package vdung.android.kloudy.data.nextcloud
 import android.net.Uri
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.data.user.User
-import java.io.File
 
 class NextcloudConfig(
-        val user: User,
-        val cacheDir: File
+        val user: User
 ) {
 
     val baseUri = Uri.parse(user.server)
@@ -32,6 +30,10 @@ class NextcloudConfig(
                     }
                 }
                 .build()
+    }
+
+    fun avatarUri(size: Int = 128): Uri {
+        return Uri.withAppendedPath(baseUri, "index.php/avatar/${user.username}/$size")
     }
 
     fun previewUri(fileId: Int, width: Int = 400, height: Int = 200): Uri {

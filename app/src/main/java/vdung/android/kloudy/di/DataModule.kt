@@ -46,21 +46,21 @@ class DataModule {
     }
 
     @Provides
-    fun provideNextcloudConfig(context: Context, userRepository: UserRepository): NextcloudConfig {
+    fun provideNextcloudConfig(userRepository: UserRepository): NextcloudConfig {
         val user = userRepository.getUser() ?: throw IllegalStateException("no user")
 
-        return NextcloudConfig(user, File(context.externalCacheDir, "downloads"))
+        return NextcloudConfig(user)
     }
 
     @Provides
-    fun provideNextcloudRepository(database: KloudyDatabase, config: NextcloudConfig, builder: Retrofit.Builder, callFactory: Call.Factory): NextcloudRepository {
+    fun provideNextcloudRepository(context: Context, database: KloudyDatabase, config: NextcloudConfig, builder: Retrofit.Builder, callFactory: Call.Factory): NextcloudRepository {
         val service = builder
                 .callFactory(callFactory)
                 .baseUrl(config.user.server)
                 .build()
                 .create(NextcloudService::class.java)
-
-        return NextcloudRepository(service, database.fileDao(), database.fileMetadataDao(), config)
+        
+        return NextcloudRepository(service, database.fileDao(), database.fileMetadataDao(), config, File(context.externalCacheDir, "downloads"))
     }
 
     @Provides

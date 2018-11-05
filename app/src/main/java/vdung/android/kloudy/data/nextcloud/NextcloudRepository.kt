@@ -10,7 +10,6 @@ import okio.Buffer
 import okio.ForwardingSource
 import okio.Okio
 import org.reactivestreams.Publisher
-import org.xmlpull.v1.XmlPullParser
 import vdung.android.kloudy.data.NetworkResourcePublisher
 import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.data.fetch
@@ -22,19 +21,12 @@ import vdung.kodav.*
 import vdung.kodav.okhttp.searchRequest
 import java.io.File
 
-data class FileId(override val value: Int?) : Prop<Int> {
-    companion object : Prop.Parser<FileId> {
-        override val tag = Xml.Tag("http://owncloud.org/ns", "fileid")
-
-        override fun parse(parser: XmlPullParser) = FileId(Xml.parseText(parser)?.toInt())
-    }
-}
-
 class NextcloudRepository(
         private val service: NextcloudService,
         private val fileEntryDao: FileEntryDao,
         private val fileMetadataDao: FileMetadataDao,
-        private val config: NextcloudConfig
+        private val config: NextcloudConfig,
+        private val cacheDir: File
 ) : FileEntryDao by fileEntryDao, FileMetadataDao by fileMetadataDao {
 
     data class Download(
@@ -84,7 +76,7 @@ class NextcloudRepository(
     fun downloadFile(fileEntry: FileEntry): Publisher<Result<Download>> {
         val fileUri = Uri.parse(fileEntry.url)
         val name = fileEntry.name ?: fileUri.lastPathSegment
-        val directory = File(config.cacheDir, fileUri.path!!.removeSuffix(name))
+        val directory = File(cacheDir, fileUri.path!!.removeSuffix(name))
         directory.mkdirs()
 
         val file = File(directory, name)
@@ -152,28 +144,14 @@ class NextcloudRepository(
                             literal("video/%")
                         }
                     }
-                    not {
-                        eq {
-                            prop {
-                                -GetContentType.tag
+                    for (mimeType in config.ignoredMimeTypes) {
+                        not {
+                            eq {
+                                prop {
+                                    -GetContentType.tag
+                                }
+                                literal(mimeType)
                             }
-                            literal("video/quicktime")
-                        }
-                    }
-                    not {
-                        eq {
-                            prop {
-                                -GetContentType.tag
-                            }
-                            literal("video/x-msvideo")
-                        }
-                    }
-                    not {
-                        eq {
-                            prop {
-                                -GetContentType.tag
-                            }
-                            literal("video/x-ms-wmv")
                         }
                     }
                     gt {

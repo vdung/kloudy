@@ -44,6 +44,9 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
     @State
     var currentPage: Int = 0
 
+    @State
+    var isTransitionCompleted = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -104,7 +107,6 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
             }
         }
         setupSystemUI()
-        toggleImmersive(window.decorView.systemUiVisibility)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -150,6 +152,11 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
         }
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
+    }
+
     private fun downloadFile(fileEntry: FileEntry, callback: (Uri) -> Unit) {
         val snackBar = Snackbar.make(binding.content, R.string.message_downloading_file, Snackbar.LENGTH_INDEFINITE).apply {
             show()
@@ -180,7 +187,7 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
     }
 
     override fun onPageLoaded(fileEntry: FileEntry) {
-        if (fileEntry == viewModel.fileEntries[viewModel.initialPosition]) {
+        if (!isTransitionCompleted && fileEntry == viewModel.fileEntries[viewModel.initialPosition]) {
             setupPostponedTransition()
         }
     }
@@ -219,6 +226,8 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
                 override fun onPreDraw(): Boolean {
                     removeOnPreDrawListener(this)
                     supportStartPostponedEnterTransition()
+                    isTransitionCompleted = true
+                    toggleImmersive(window.decorView.systemUiVisibility)
                     return true
                 }
             })

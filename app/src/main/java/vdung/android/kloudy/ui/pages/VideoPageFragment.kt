@@ -5,16 +5,22 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.app.SharedElementCallback
 import androidx.core.view.ViewCompat
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.get
 import com.evernote.android.state.State
 import com.evernote.android.state.StateSaver
 import com.google.android.exoplayer2.ExoPlayerFactory
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.video.VideoListener
 import dagger.android.support.DaggerFragment
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.databinding.VideoPageFragmentBinding
+import vdung.android.kloudy.di.GlideApp
 import javax.inject.Inject
 
 class VideoPageFragment : DaggerFragment() {
@@ -29,17 +35,40 @@ class VideoPageFragment : DaggerFragment() {
         }
     }
 
-    internal lateinit var binding: VideoPageFragmentBinding
-
     @Inject
     internal lateinit var exoDataSourceFactory: DataSource.Factory
+    @Inject
+    internal lateinit var viewModelFactory: ViewModelProvider.Factory
+    private lateinit var viewModel: PagerViewModel
+
+    private lateinit var binding: VideoPageFragmentBinding
+
     private var isPlayerInitialized = false
     private var isVisibleToUser = false
 
     @State
-    var currentPosition: Long = 0
-    @State
     var playWhenReady = false
+
+    internal val sharedElementCallback = object : SharedElementCallback() {
+
+        private var playerVisibility: Int = 0
+
+        override fun onMapSharedElements(names: MutableList<String>, sharedElements: MutableMap<String, View>) {
+            val key = names[0]
+            sharedElements[key] = binding.videoPreview
+        }
+
+        override fun onSharedElementStart(sharedElementNames: MutableList<String>?, sharedElements: MutableList<View>?, sharedElementSnapshots: MutableList<View>?) {
+            super.onSharedElementStart(sharedElementNames, sharedElements, sharedElementSnapshots)
+            playerVisibility = binding.videoPlayer.visibility
+            binding.videoPlayer.visibility = View.INVISIBLE
+        }
+
+        override fun onSharedElementEnd(sharedElementNames: MutableList<String>?, sharedElements: MutableList<View>?, sharedElementSnapshots: MutableList<View>?) {
+            super.onSharedElementEnd(sharedElementNames, sharedElements, sharedElementSnapshots)
+            binding.videoPlayer.visibility = playerVisibility
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,15 +86,24 @@ class VideoPageFragment : DaggerFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        if (isVisibleToUser && !isPlayerInitialized) {
-            initializePlayer()
-        }
+        viewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get()
 
         val fileEntry: FileEntry = arguments!!.getParcelable(ARG_FILE_ENTRY)!!
         val url = Uri.parse(fileEntry.url)
 
-        ViewCompat.setTransitionName(binding.videoPlayer, url.toString())
-        requireActivity().let { it as? OnPagedLoadedListener }?.onPageLoaded(fileEntry)
+        binding.run {
+            ViewCompat.setTransitionName(videoPreview, url.toString())
+
+            playVideo.setOnClickListener {
+                videoPreviewFrame.visibility = View.INVISIBLE
+                videoPlayer.visibility = View.VISIBLE
+                videoPlayer.player.playWhenReady = true
+            }
+        }
+
+        if (isVisibleToUser && !isPlayerInitialized) {
+            initializePlayer()
+        }
     }
 
     override fun onPause() {
@@ -87,7 +125,6 @@ class VideoPageFragment : DaggerFragment() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (isPlayerInitialized) {
-            currentPosition = binding.videoPlayer.player.currentPosition
             playWhenReady = binding.videoPlayer.player.playWhenReady
         }
 
@@ -121,8 +158,24 @@ class VideoPageFragment : DaggerFragment() {
         val exoPlayer = ExoPlayerFactory.newSimpleInstance(requireContext())
         exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
         exoPlayer.prepare(videoSource)
-        exoPlayer.seekTo(currentPosition)
+        exoPlayer.seekTo(0)
         exoPlayer.playWhenReady = playWhenReady
+        exoPlayer.addVideoListener(object : VideoListener {
+            override fun onSurfaceSizeChanged(width: Int, height: Int) {
+                exoPlayer.removeVideoListener(this)
+                val previewUri = viewModel.thumbnailUrl(fileEntry, width, height)
+                GlideApp.with(binding.videoPreview)
+                        .load(previewUri)
+                        .apply {
+                            requireActivity()
+                                    .let { it as? OnPagedLoadedListener }
+                                    ?.let {
+                                        addListener(it.toRequestListener(fileEntry))
+                                    }
+                        }
+                        .into(binding.videoPreview)
+            }
+        })
 
         binding.videoPlayer.player = exoPlayer
         binding.videoPlayer.onPause()

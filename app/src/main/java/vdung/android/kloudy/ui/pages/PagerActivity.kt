@@ -9,12 +9,14 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewTreeObserver
 import androidx.appcompat.widget.ActionMenuView
-import androidx.core.app.SharedElementCallback
 import androidx.core.content.FileProvider
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentStatePagerAdapter
-import androidx.lifecycle.*
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.get
 import androidx.paging.PagedList
 import androidx.viewpager.widget.ViewPager
 import com.evernote.android.state.State
@@ -66,28 +68,12 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
             menuInflater.inflate(R.menu.file_actions, bottomToolbar.menu)
             bottomToolbar.setOnMenuItemClickListener(this@PagerActivity)
         }
-        viewModel.fileEntriesResult.observe({ lifecycle }) { it ->
+        viewModel.fileEntriesResult.observe(this, Observer { it ->
             binding.apply {
-                pager.adapter = PagerAdapter().also { adapter ->
-                    setEnterSharedElementCallback(object : SharedElementCallback() {
-                        override fun onMapSharedElements(names: MutableList<String>, sharedElements: MutableMap<String, View>) {
-                            val key = names[0]
-                            adapter.instantiateItem(pager, pager.currentItem)
-                                    .let {
-                                        when (it) {
-                                            is PhotoPageFragment -> sharedElements[key] = it.binding.photoView
-                                            is VideoPageFragment -> sharedElements[key] = it.binding.videoPlayer.videoSurfaceView
-                                        }
-                                    }
-                        }
-                    })
+                val adapter = PagerAdapter().also { adapter ->
                     it.addWeakCallback(null, adapter.callback)
                 }
-
-                pager.currentItem = currentPage
-                it.loadAround(viewModel.initialPosition)
-                title = it[viewModel.initialPosition]?.url?.let { Uri.parse(it).lastPathSegment }
-
+                pager.adapter = adapter
                 pager.addOnPageChangeListener(object : ViewPager.SimpleOnPageChangeListener() {
                     override fun onPageSelected(position: Int) {
                         currentPage = position
@@ -96,10 +82,22 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
                         it.loadAround(position)
                         title = it[position]?.url?.let { Uri.parse(it).lastPathSegment }
                         invalidateOptionsMenu()
+
+                        adapter.instantiateItem(pager, position)
+                                .let {
+                                    when (it) {
+                                        is PhotoPageFragment -> setEnterSharedElementCallback(it.sharedElementCallback)
+                                        is VideoPageFragment -> setEnterSharedElementCallback(it.sharedElementCallback)
+                                    }
+                                }
                     }
                 })
+
+                it.loadAround(viewModel.initialPosition)
+                title = it[viewModel.initialPosition]?.url?.let { Uri.parse(it).lastPathSegment }
+                pager.currentItem = currentPage
             }
-        }
+        })
 
         window.decorView.apply {
             setOnSystemUiVisibilityChangeListener { flags ->
@@ -163,7 +161,7 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
         }
 
         viewModel.downloadFile(fileEntry).apply {
-            observe(LifecycleOwner { lifecycle }, object : Observer<Result<NextcloudRepository.Download>> {
+            observe(this@PagerActivity, object : Observer<Result<NextcloudRepository.Download>> {
                 override fun onChanged(result: Result<NextcloudRepository.Download>?) {
                     when (result) {
                         is Result.Success -> {
@@ -242,7 +240,7 @@ class PagerActivity : DaggerAppCompatActivity(), ActionMenuView.OnMenuItemClickL
             val item = viewModel.fileEntries[position]
             return when {
                 item == null -> PlaceholderPageFragment()
-                item.contentType.startsWith("image") -> PhotoPageFragment.newInstance(item, viewModel.thumbnailUrl(item))
+                item.contentType.startsWith("image") -> PhotoPageFragment.newInstance(item)
                 item.contentType.startsWith("video") -> VideoPageFragment.newInstance(item)
                 else -> throw IllegalStateException()
             }

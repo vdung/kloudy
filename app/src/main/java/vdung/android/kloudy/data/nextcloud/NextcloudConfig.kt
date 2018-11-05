@@ -36,7 +36,7 @@ class NextcloudConfig(
         return Uri.withAppendedPath(baseUri, "index.php/avatar/${user.username}/$size")
     }
 
-    fun previewUri(fileId: Int, width: Int = 400, height: Int = 200): Uri {
+    fun galleryPreviewUri(fileId: Int, width: Int = 400, height: Int = 200): Uri {
         return Uri.withAppendedPath(baseUri, "index.php/apps/gallery/preview/$fileId")
                 .buildUpon()
                 .appendQueryParameter("width", width.toString())
@@ -44,11 +44,17 @@ class NextcloudConfig(
                 .build()
     }
 
-    fun preferredPreviewUri(fileEntry: FileEntry): Uri {
-        return if (fileEntry.contentType.startsWith("image")) {
-            previewUri(fileEntry.fileId)
-        } else {
-            thumbnailUri(fileEntry.url)
-        }
+    fun previewUri(fileId: Int, width: Int = 512, height: Int = 512): Uri {
+        return Uri.withAppendedPath(baseUri, "index.php/core/preview")
+                .buildUpon()
+                .appendQueryParameter("fileId", fileId.toString())
+                .appendQueryParameter("x", width.toString())
+                .appendQueryParameter("y", height.toString())
+                .appendQueryParameter("a", "1")
+                .build()
+    }
+
+    fun preferredPreviewUri(fileEntry: FileEntry, width: Int = 512, height: Int = 512): Uri {
+        return previewUri(fileEntry.fileId, width, height)
     }
 }

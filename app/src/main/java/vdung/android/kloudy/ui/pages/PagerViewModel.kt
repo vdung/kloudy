@@ -36,12 +36,8 @@ class PagerViewModel @Inject constructor(
 
     val fileEntries: List<FileEntry?> get() = fileEntriesResult.value ?: emptyList()
 
-    fun thumbnailUrl(fileEntry: FileEntry): String {
-        return if (fileEntry.contentType.startsWith("image")) {
-            nextcloudConfig.previewUri(fileEntry.fileId).toString()
-        } else {
-            nextcloudConfig.thumbnailUri(fileEntry.url).toString()
-        }
+    fun thumbnailUrl(fileEntry: FileEntry, width: Int = 512, height: Int = 512): String {
+        return nextcloudConfig.preferredPreviewUri(fileEntry, width, height).toString()
     }
 
     fun downloadFile(fileEntry: FileEntry): LiveData<Result<NextcloudRepository.Download>> {

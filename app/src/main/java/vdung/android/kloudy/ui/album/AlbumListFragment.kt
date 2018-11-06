@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import dagger.android.support.DaggerFragment
 import vdung.android.kloudy.BR
 import vdung.android.kloudy.R
+import vdung.android.kloudy.data.glide.Thumbnail
 import vdung.android.kloudy.data.model.DirectoryQueryResult
 import vdung.android.kloudy.databinding.AlbumGridCellBinding
 import vdung.android.kloudy.databinding.AlbumListFragmentBinding
@@ -82,7 +83,7 @@ class AlbumListFragment : DaggerFragment() {
             holder.binding.setVariable(BR.eventListener, viewModel)
             val item = getItem(position) ?: return
             GlideApp.with(holder.itemView)
-                    .load(viewModel.thumbnailUrl(item.fileEntry))
+                    .load(Thumbnail(item.fileEntry))
                     .into(holder.binding.imageView)
         }
 

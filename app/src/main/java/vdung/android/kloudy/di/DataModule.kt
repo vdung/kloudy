@@ -27,9 +27,11 @@ import javax.inject.Singleton
 class DataModule {
 
     @Provides
-    fun provideCallFactory(userRepository: UserRepository): Call.Factory = OkHttpClient.Builder()
-            .addInterceptor(UserAuthenticator(userRepository))
-            .build()
+    fun provideCallFactory(userRepository: UserRepository): Call.Factory {
+        return OkHttpClient.Builder()
+                .addInterceptor(UserAuthenticator(userRepository))
+                .build()
+    }
 
     @Provides
     fun provideRetrofit(): Retrofit.Builder {
@@ -59,7 +61,7 @@ class DataModule {
                 .baseUrl(config.user.server)
                 .build()
                 .create(NextcloudService::class.java)
-        
+
         return NextcloudRepository(service, database.fileDao(), database.fileMetadataDao(), config, File(context.externalCacheDir, "downloads"))
     }
 

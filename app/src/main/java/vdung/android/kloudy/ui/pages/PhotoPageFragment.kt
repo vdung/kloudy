@@ -6,14 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.app.SharedElementCallback
 import androidx.core.view.ViewCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
-import androidx.lifecycle.get
 import dagger.android.support.DaggerFragment
+import vdung.android.kloudy.data.glide.Thumbnail
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.databinding.PhotoPageFragmentBinding
 import vdung.android.kloudy.di.GlideApp
-import javax.inject.Inject
 
 class PhotoPageFragment : DaggerFragment() {
 
@@ -26,10 +23,6 @@ class PhotoPageFragment : DaggerFragment() {
             }
         }
     }
-
-    @Inject
-    internal lateinit var viewModelFactory: ViewModelProvider.Factory
-    private lateinit var viewModel: PagerViewModel
 
     private lateinit var binding: PhotoPageFragmentBinding
 
@@ -51,16 +44,13 @@ class PhotoPageFragment : DaggerFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        viewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get()
-
         val fileEntry: FileEntry = arguments!!.getParcelable(ARG_FILE_ENTRY)!!
-        val thumbnailUrl = viewModel.thumbnailUrl(fileEntry)
 
         binding.apply {
             ViewCompat.setTransitionName(photoView, fileEntry.url)
             GlideApp.with(photoView)
                     .load(fileEntry.url)
-                    .thumbnail(GlideApp.with(photoView).load(thumbnailUrl).onlyRetrieveFromCache(true))
+                    .thumbnail(GlideApp.with(photoView).load(Thumbnail(fileEntry)).onlyRetrieveFromCache(true))
                     .apply {
                         requireActivity()
                                 .let { it as? OnPagedLoadedListener }

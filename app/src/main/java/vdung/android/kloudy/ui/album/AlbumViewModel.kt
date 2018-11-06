@@ -6,14 +6,11 @@ import androidx.lifecycle.toLiveData
 import androidx.paging.PagedList
 import io.reactivex.processors.PublishProcessor
 import vdung.android.kloudy.data.model.DirectoryQueryResult
-import vdung.android.kloudy.data.model.FileEntry
-import vdung.android.kloudy.data.nextcloud.NextcloudConfig
 import vdung.android.kloudy.data.nextcloud.NextcloudRepository
 import javax.inject.Inject
 
 class AlbumViewModel @Inject constructor(
-        private val nextcloudRepository: NextcloudRepository,
-        private val nextcloudConfig: NextcloudConfig
+        private val nextcloudRepository: NextcloudRepository
 ) : ViewModel(), AlbumEventListener {
 
     private val albumClickProcessor = PublishProcessor.create<String>()
@@ -27,10 +24,6 @@ class AlbumViewModel @Inject constructor(
     val entryClickEvent get() = entryClickProcessor.toLiveData()
 
     fun albumFiles(directory: String) = nextcloudRepository.albumFiles(directory).toLiveData()
-
-    fun thumbnailUrl(fileEntry: FileEntry): String {
-        return nextcloudConfig.preferredPreviewUri(fileEntry).toString()
-    }
 
     override fun onAlbumClick(directory: String) {
         albumClickProcessor.onNext(directory)

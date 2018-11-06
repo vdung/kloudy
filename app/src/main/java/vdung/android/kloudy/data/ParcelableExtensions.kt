@@ -7,7 +7,7 @@ import android.os.Parcelable
 
 fun <T : Parcelable> T.marshall(): ByteArray {
     val parcel = Parcel.obtain()
-    val bundle = Bundle().let {
+    Bundle().let {
         it.putParcelable(this::class.java.name, this)
         parcel.writeBundle(it)
     }

@@ -7,9 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.app.SharedElementCallback
 import androidx.core.view.ViewCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
-import androidx.lifecycle.get
 import com.evernote.android.state.State
 import com.evernote.android.state.StateSaver
 import com.google.android.exoplayer2.ExoPlayerFactory
@@ -18,6 +15,7 @@ import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.video.VideoListener
 import dagger.android.support.DaggerFragment
+import vdung.android.kloudy.data.glide.Thumbnail
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.databinding.VideoPageFragmentBinding
 import vdung.android.kloudy.di.GlideApp
@@ -37,9 +35,6 @@ class VideoPageFragment : DaggerFragment() {
 
     @Inject
     internal lateinit var exoDataSourceFactory: DataSource.Factory
-    @Inject
-    internal lateinit var viewModelFactory: ViewModelProvider.Factory
-    private lateinit var viewModel: PagerViewModel
 
     private lateinit var binding: VideoPageFragmentBinding
 
@@ -85,8 +80,6 @@ class VideoPageFragment : DaggerFragment() {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-
-        viewModel = ViewModelProviders.of(requireActivity(), viewModelFactory).get()
 
         val fileEntry: FileEntry = arguments!!.getParcelable(ARG_FILE_ENTRY)!!
         val url = Uri.parse(fileEntry.url)
@@ -163,9 +156,9 @@ class VideoPageFragment : DaggerFragment() {
         exoPlayer.addVideoListener(object : VideoListener {
             override fun onSurfaceSizeChanged(width: Int, height: Int) {
                 exoPlayer.removeVideoListener(this)
-                val previewUri = viewModel.thumbnailUrl(fileEntry, width, height)
                 GlideApp.with(binding.videoPreview)
-                        .load(previewUri)
+                        .load(Thumbnail(fileEntry))
+                        .override(width, height)
                         .apply {
                             requireActivity()
                                     .let { it as? OnPagedLoadedListener }

@@ -25,6 +25,7 @@ import com.evernote.android.state.StateSaver
 import dagger.android.support.DaggerFragment
 import vdung.android.kloudy.BR
 import vdung.android.kloudy.R
+import vdung.android.kloudy.data.glide.Thumbnail
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.databinding.AlbumFragmentBinding
 import vdung.android.kloudy.databinding.AlbumPhotoCellBinding
@@ -180,7 +181,7 @@ class AlbumFragment : DaggerFragment(), OnActivityReenterListener {
             ViewCompat.setTransitionName(holder.binding.imageView, item.url)
 
             GlideApp.with(holder.itemView)
-                    .load(viewModel.thumbnailUrl(item))
+                    .load(Thumbnail(item))
                     .into(holder.binding.imageView)
         }
 

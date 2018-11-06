@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import dagger.android.support.DaggerFragment
 import vdung.android.kloudy.R
+import vdung.android.kloudy.data.glide.Thumbnail
 import vdung.android.kloudy.data.model.FileEntry
 import vdung.android.kloudy.data.nextcloud.NextcloudConfig
 import vdung.android.kloudy.databinding.TimelineFragmentBinding
@@ -200,17 +201,17 @@ class TimelineFragment : DaggerFragment(), OnActivityReenterListener {
 
         override fun onBindViewHolder(holder: DataBindingViewHolder<ViewDataBinding>, position: Int) {
             super.onBindViewHolder(holder, position)
-            val cell = getItem(position)
-            if (holder.binding is TimelineGridCellBinding && cell is FileEntry) {
+            val item = getItem(position)
+            if (holder.binding is TimelineGridCellBinding && item is FileEntry) {
                 holder.binding.apply {
-                    ViewCompat.setTransitionName(imageView, cell.url)
+                    ViewCompat.setTransitionName(imageView, item.url)
 
-                    videoIndicator.visibility = if (cell.contentType.startsWith("video")) View.VISIBLE else View.GONE
+                    videoIndicator.visibility = if (item.contentType.startsWith("video")) View.VISIBLE else View.GONE
 
                     eventListener = viewModel
 
                     GlideApp.with(holder.itemView)
-                            .load(viewModel.thumbnailUrl(cell))
+                            .load(Thumbnail(item))
                             .into(imageView)
                 }
             }

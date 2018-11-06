@@ -9,14 +9,11 @@ import io.reactivex.processors.PublishProcessor
 import io.reactivex.schedulers.Schedulers
 import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.data.fetch
-import vdung.android.kloudy.data.model.FileEntry
-import vdung.android.kloudy.data.nextcloud.NextcloudConfig
 import vdung.android.kloudy.data.nextcloud.NextcloudRepository
 import javax.inject.Inject
 
 class TimelineViewModel @Inject constructor(
-        private val nextcloudRepository: NextcloudRepository,
-        private val nextcloudConfig: NextcloudConfig
+        private val nextcloudRepository: NextcloudRepository
 ) : ViewModel(), TimelineEventListener {
 
     private val fileEntriesResource = nextcloudRepository.fetchAllEntries()
@@ -45,10 +42,6 @@ class TimelineViewModel @Inject constructor(
     val entryClickEvent get() = LiveDataReactiveStreams.fromPublisher(entryClickProcessor)
 
     var currentPage = 0
-
-    fun thumbnailUrl(fileEntry: FileEntry): String {
-        return nextcloudConfig.preferredPreviewUri(fileEntry).toString()
-    }
 
     fun refresh() {
         fileEntriesResource.fetch()

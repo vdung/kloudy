@@ -9,13 +9,11 @@ import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import vdung.android.kloudy.data.Result
 import vdung.android.kloudy.data.model.FileEntry
-import vdung.android.kloudy.data.nextcloud.NextcloudConfig
 import vdung.android.kloudy.data.nextcloud.NextcloudRepository
 import javax.inject.Inject
 
 class PagerViewModel @Inject constructor(
         private val nextcloudRepository: NextcloudRepository,
-        private val nextcloudConfig: NextcloudConfig,
         arguments: Args
 ) : ViewModel() {
 
@@ -35,10 +33,6 @@ class PagerViewModel @Inject constructor(
     }
 
     val fileEntries: List<FileEntry?> get() = fileEntriesResult.value ?: emptyList()
-
-    fun thumbnailUrl(fileEntry: FileEntry, width: Int = 512, height: Int = 512): String {
-        return nextcloudConfig.preferredPreviewUri(fileEntry, width, height).toString()
-    }
 
     fun downloadFile(fileEntry: FileEntry): LiveData<Result<NextcloudRepository.Download>> {
         return LiveDataReactiveStreams.fromPublisher(

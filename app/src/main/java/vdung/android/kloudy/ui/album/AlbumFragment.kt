@@ -44,7 +44,7 @@ class AlbumFragment : DaggerFragment(), OnActivityReenterListener {
     internal lateinit var viewModelFactory: ViewModelProvider.Factory
 
     private val directory: String by lazy {
-        AlbumFragmentArgs.fromBundle(arguments).directory
+        AlbumFragmentArgs.fromBundle(arguments!!).directory
     }
 
     @State
@@ -148,7 +148,7 @@ class AlbumFragment : DaggerFragment(), OnActivityReenterListener {
                                 requireActivity(),
                                 Pair(binding.imageView, binding.imageView.transitionName)
                         )
-                        val extras = ActivityNavigator.Extras(options)
+                        val extras = ActivityNavigator.Extras.Builder().setActivityOptions(options).build()
                         val direction = PagerActivityDirections.actionShowPhoto(directory, adapterPosition)
                         findNavController().navigate(direction, extras)
                     }

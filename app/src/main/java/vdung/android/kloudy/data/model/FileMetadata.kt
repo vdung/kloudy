@@ -20,7 +20,7 @@ data class DirectoryQueryResult(
         val fileEntry: FileEntry
 ) {
     @Ignore
-    val name = Uri.parse(directory).lastPathSegment
+    val name: String? = Uri.parse(directory).lastPathSegment
 }
 
 @Dao

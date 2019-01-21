@@ -172,7 +172,7 @@ class TimelineFragment : DaggerFragment(), OnActivityReenterListener {
                                             requireActivity(),
                                             Pair(imageView, imageView.transitionName)
                                     )
-                                    val extras = ActivityNavigator.Extras(options)
+                                    val extras = ActivityNavigator.Extras.Builder().setActivityOptions(options).build()
                                     val direction = PagerActivityDirections.actionShowPhoto("", position)
                                     findNavController().navigate(direction, extras)
                                 }
